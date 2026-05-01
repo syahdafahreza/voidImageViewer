@@ -29,6 +29,7 @@ enum
 {
 	LOCALIZATION_LANGUAGE_ENGLISH = 0,
 	LOCALIZATION_LANGUAGE_CHINESE_SIMPLIFIED,
+	LOCALIZATION_LANGUAGE_INDONESIAN,
 	LOCALIZATION_LANGUAGE_COUNT,
 };
 
@@ -40,6 +41,7 @@ typedef BYTE localization_id_t;
 // Returns UTF-8 encoded string
 const utf8_t *localization_get_string(localization_id_t localization_id);
 const utf8_t *localization_get_en_us_string(localization_id_t localization_id);
+const utf8_t *localization_get_language_name(BYTE language);
 
 // Initialize language system (detects system language)
 void localization_init(void);
@@ -49,6 +51,8 @@ enum
 {
 	// Localization
 	LOCALIZATION_ID_LANGUAGE = 0,
+	LOCALIZATION_ID_LANGUAGE_STATIC,
+	LOCALIZATION_ID_LANGUAGE_AUTO,
 
 	// Application name
 	LOCALIZATION_ID_APP_NAME,
@@ -255,6 +259,7 @@ enum
 	LOCALIZATION_ID_CACHE_LAST_IMAGE_STATIC,
 	LOCALIZATION_ID_WINDOWED_BACKGROUND_COLOR_STATIC,
 	LOCALIZATION_ID_FULLSCREEN_BACKGROUND_COLOR_STATIC,
+	LOCALIZATION_ID_OPTIONS_VIEW_RESET_WINDOW_BUTTON,
 	LOCALIZATION_ID_LEFT_CLICK_ACTION_STATIC,
 	LOCALIZATION_ID_RIGHT_CLICK_ACTION_STATIC,
 	LOCALIZATION_ID_MOUSE_WHEEL_ACTION_STATIC,

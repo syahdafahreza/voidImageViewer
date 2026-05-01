@@ -59,6 +59,7 @@ void config_load_settings(void);
 void config_save_settings(int appdata);
 
 extern BYTE config_appdata;
+extern BYTE config_language;
 extern BYTE config_keep_centered;
 extern int config_x;
 extern int config_y;

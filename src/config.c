@@ -29,7 +29,8 @@ static void _config_write_string(HANDLE h,const char *ascii_key,const wchar_t *s
 static void _config_write_utf8(HANDLE h,const utf8_t *s);
 static void _config_save_settings_by_location(const wchar_t *path,int is_root);
 
-BYTE config_appdata = 0; // store settings in %APPDATA%\voidimageviewer or in the same location as voidimageviewer.exe
+BYTE config_appdata = 1; // store settings in %APPDATA%\voidimageviewer or in the same location as voidimageviewer.exe
+BYTE config_language = 255; // 255 = auto
 BYTE config_keep_centered = 1; // when zooming out, don't recenter the image. (keep cursor under the same pixel)
 int config_x = 0;
 int config_y = 0;
@@ -40,8 +41,8 @@ int config_slideshow_rate = 5000;
 BYTE config_allow_shrinking = 1; // prevent resizing an image below 100%
 BYTE config_shrink_blit_mode = CONFIG_SHRINK_BLIT_MODE_HALFTONE; // shrink filter
 BYTE config_mag_filter = CONFIG_MAG_FILTER_COLORONCOLOR; // magnify filter
-BYTE config_nav_sort = CONFIG_NAV_SORT_DATE_MODIFIED; // current navigation sort.
-BYTE config_nav_sort_ascending = 0; // sort navigation ascending or descending.
+BYTE config_nav_sort = CONFIG_NAV_SORT_NAME; // current navigation sort.
+BYTE config_nav_sort_ascending = 1; // sort navigation ascending or descending.
 BYTE config_keep_aspect_ratio = 1; // stretch images with the original aspect ratio.
 BYTE config_fill_window = 0; // stretch the image to fill the window
 BYTE config_fullscreen_fill_window = 1; // same as fill_window, except this setting is used when we are fullscreen
@@ -102,6 +103,7 @@ static void _config_load_settings_by_location(const wchar_t *path,int is_root)
 	if (ini)
 	{
 		config_x = ini_get_int(ini,(const utf8_t *)"x",config_x);
+		config_language = ini_get_int(ini,(const utf8_t *)"language",config_language);
 		config_y = ini_get_int(ini,(const utf8_t *)"y",config_y);
 		config_wide = ini_get_int(ini,(const utf8_t *)"wide",config_wide);
 		config_high = ini_get_int(ini,(const utf8_t *)"high",config_high);
@@ -286,6 +288,7 @@ static void _config_save_settings_by_location(const wchar_t *path,int is_root)
 		else
 		{
 			_config_write_int(h,"x",config_x);
+			_config_write_int(h,"language",config_language);
 			_config_write_int(h,"y",config_y);
 			_config_write_int(h,"wide",config_wide);
 			_config_write_int(h,"high",config_high);

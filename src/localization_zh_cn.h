@@ -26,6 +26,8 @@ static const utf8_t *_localization_string_array_zh_cn[LOCALIZATION_ID_COUNT] =
 {
 	// Language
 	"简体中文", // LOCALIZATION_ID_LANGUAGE
+	"语言(&L):", // LOCALIZATION_ID_LANGUAGE_STATIC
+	"系统默认", // LOCALIZATION_ID_LANGUAGE_AUTO
 
 	// Application name
 	"void Image Viewer", // LOCALIZATION_ID_APP_NAME
@@ -233,6 +235,7 @@ static const utf8_t *_localization_string_array_zh_cn[LOCALIZATION_ID_COUNT] =
 	"缓存最后一张图像(&L)", // LOCALIZATION_ID_CACHE_LAST_IMAGE_STATIC,
 	"窗口背景颜色(&W):", // LOCALIZATION_ID_WINDOWED_BACKGROUND_COLOR_STATIC,
 	"全屏背景颜色(&F):", // LOCALIZATION_ID_FULLSCREEN_BACKGROUND_COLOR_STATIC,
+	"重置窗口大小和位置", // LOCALIZATION_ID_OPTIONS_VIEW_RESET_WINDOW_BUTTON,
 	"左键操作(&L):", // LOCALIZATION_ID_LEFT_CLICK_ACTION_STATIC,
 	"右键操作(&R):", // LOCALIZATION_ID_RIGHT_CLICK_ACTION_STATIC,
 	"鼠标滚轮操作(&M):", // LOCALIZATION_ID_MOUSE_WHEEL_ACTION_STATIC,

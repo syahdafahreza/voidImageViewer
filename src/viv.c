@@ -257,7 +257,7 @@
 #define _VIV_ASSOCIATION_TIFF				0x00000080
 #define _VIV_ASSOCIATION_WEBP				0x00000100
 
-#define _VIV_ZOOM_MAX 16
+#define _VIV_ZOOM_MAX 64
 
 #define BCM_SETSHIELD	0x0000160C
 
@@ -444,7 +444,7 @@ typedef struct _viv_webp_s
 typedef struct _viv_name_mapping_s
 {
 	UINT count;
-	SHNAMEMAPPING *mappings;
+	SHNAMEMAPPING mappings[1];
 }_viv_name_mapping_t;
 
 static void _viv_update_title(void);
@@ -608,6 +608,7 @@ static int _viv_compare_id(const WIN32_FIND_DATA *a,const WIN32_FIND_DATA *b);
 static int _viv_fd_compare_name(const WIN32_FIND_DATA *a,const WIN32_FIND_DATA *b);
 static int _viv_fd_compare_path_and_name(const WIN32_FIND_DATA *a,const WIN32_FIND_DATA *b);
 static void _viv_update_1to1_scroll(int x,int y);
+static HBITMAP _viv_create_bitmap(HDC hdc, int width, int height);
 static HBITMAP _viv_orientate_hbitmap(HBITMAP hbitmap,int counterclockwise);
 static void _viv_send_random_everything_search(void);
 static void _viv_do_mousewheel_action(int action,int delta,int x,int y);
@@ -681,8 +682,6 @@ static int _viv_view_y = 0; // the current image offset in pixels
 static double _viv_view_ix = 0.0; // the current image offset in percent, used when resizing the window
 static double _viv_view_iy = 0.0; // the current image offset in percent, used when resizing the window
 static int _viv_zoom_pos = 0; // the current zoom level
-//static float _viv_zoom_presets[_VIV_ZOOM_MAX] = {0.004815f,0.019215f,0.043060f,0.076120f,0.118079f,0.168530f,0.226989f,0.292893f,0.365607f,0.444430f,0.528603f,0.617316f,0.709715f,0.804909f,0.901983f,1.000000f}; // (1 - cos(((float)(x+1) * 1.570796f) / _VIV_ZOOM_MAX)) // this is missing cos((1 * 1.570796f) / _VIV_ZOOM_MAX), which is too small
-static float _viv_zoom_presets[_VIV_ZOOM_MAX] = {0.0000,0.0100,0.0225,0.0379,0.0569,0.0806,0.1098,0.1461,0.1909,0.2465,0.3154,0.4007,0.5063,0.6372,0.7993,1.0000}; // 0.01 - 0.2 curve
 
 static ULONG_PTR os_GdiplusToken; // gdiplus handle
 static int _viv_image_wide = 0; // current image width
@@ -988,9 +987,7 @@ _viv_default_key_t _viv_default_keys[] =
 	{VIV_ID_EDIT_COPY,CONFIG_KEYFLAG_CTRL | 'C'},
 	{VIV_ID_EDIT_COPY_FILENAME,CONFIG_KEYFLAG_CTRL | CONFIG_KEYFLAG_SHIFT | 'C'},
 	{VIV_ID_EDIT_PASTE,CONFIG_KEYFLAG_CTRL | 'V'},
-	{VIV_ID_VIEW_PRESET_1,'1'},
-	{VIV_ID_VIEW_PRESET_2,'2'},
-	{VIV_ID_VIEW_PRESET_3,'3'},
+
 	{VIV_ID_VIEW_1TO1,CONFIG_KEYFLAG_CTRL | CONFIG_KEYFLAG_ALT | '0'},
 	{VIV_ID_VIEW_FULLSCREEN,CONFIG_KEYFLAG_ALT | VK_RETURN},
 	{VIV_ID_VIEW_SLIDESHOW,VK_F11},
@@ -5260,6 +5257,7 @@ static int _viv_init(int nCmdShow)
 
 	// load settings
 	config_load_settings();
+	localization_init();
 	
 	// config_maximized will be overwritten when we show are normal window
 	// so save it now and apply it later.
@@ -6975,23 +6973,11 @@ static void _viv_get_render_size(int *prw,int *prh)
 	
 	if (config_keep_aspect_ratio)
 	{
-		if (rw > _viv_image_wide)
-		{
-			max_zoom_wide = rw * 16;
-		}
-		else
-		{
-			max_zoom_wide = _viv_image_wide * 16;
-		}
+		max_zoom_wide = rw * 16;
+		if (max_zoom_wide < _viv_image_wide * 16) max_zoom_wide = _viv_image_wide * 16;
 		
-		if (rh > _viv_image_high)
-		{
-			max_zoom_high = rh * 16;
-		}
-		else
-		{
-			max_zoom_high = _viv_image_high * 16;
-		}
+		max_zoom_high = rh * 16;
+		if (max_zoom_high < _viv_image_high * 16) max_zoom_high = _viv_image_high * 16;
 	}
 	else
 	{
@@ -7011,8 +6997,9 @@ static void _viv_get_render_size(int *prw,int *prh)
 	*/
 	if (_viv_zoom_pos)
 	{
-		rw = rw + (int)((max_zoom_wide - rw) * _viv_zoom_presets[_viv_zoom_pos]);
-		rh = rh + (int)((max_zoom_high - rh) * _viv_zoom_presets[_viv_zoom_pos]);
+		double zoom_factor = pow((double)max_zoom_wide / (double)rw, (double)_viv_zoom_pos / (double)(_VIV_ZOOM_MAX - 1));
+		rw = (int)((double)rw * zoom_factor);
+		rh = (int)((double)rh * zoom_factor);
 	}
 	
 	*prw = rw;
@@ -7212,7 +7199,7 @@ static void _viv_delete(int permanently)
 		fo.hwnd = _viv_hwnd;
 		fo.wFunc = FO_DELETE;
 		fo.pFrom = filename_list;
-		fo.fFlags = permanently ? 0 : FOF_ALLOWUNDO;
+		fo.fFlags = permanently ? FOF_WANTNUKEWARNING : FOF_ALLOWUNDO;
 
 		if (SHFileOperation(&fo) == 0)
 		{
@@ -7295,8 +7282,8 @@ static INT_PTR CALLBACK _viv_rename_proc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 							fo.pTo = new_filename_list;
 							fo.fFlags = FOF_ALLOWUNDO | FOF_WANTMAPPINGHANDLE;
 
-							// returns ERROR_CANCELLED if user cancelled.
-							if (SHFileOperation(&fo) == 0)
+							int sh_ret = SHFileOperation(&fo);
+							if (sh_ret == 0)
 							{
 								if (fo.fAnyOperationsAborted)
 								{
@@ -7316,7 +7303,7 @@ static INT_PTR CALLBACK _viv_rename_proc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 										
 										mappings = (_viv_name_mapping_t *)fo.hNameMappings;
 											
-										if (mappings->count == 1)
+										if (mappings->count >= 1)
 										{
 											// use the resolved name incase there was a rename collision.
 											file_op_new_name = mappings->mappings[0].pszNewPath;
@@ -7339,6 +7326,11 @@ static INT_PTR CALLBACK _viv_rename_proc(HWND hwnd,UINT msg,WPARAM wParam,LPARAM
 								{
 									SHFreeNameMappings(fo.hNameMappings);
 								}							
+							}
+							else
+							{
+								// returned non-zero (user cancelled or clicked No)
+								dont_end_dialog = 1;
 							}
 						}
 
@@ -7505,7 +7497,7 @@ static void _viv_set_clipboard_image(void)
 					{
 						HBITMAP mem1_hbitmap;
 
-						mem1_hbitmap = CreateCompatibleBitmap(screen_hdc,_viv_image_wide,_viv_image_high);
+						mem1_hbitmap = _viv_create_bitmap(screen_hdc,_viv_image_wide,_viv_image_high);
 						if (mem1_hbitmap)
 						{
 							HGDIOBJ last_mem1_hbitmap;
@@ -7936,8 +7928,26 @@ static INT_PTR CALLBACK _viv_options_general_proc(HWND hwnd,UINT msg,WPARAM wPar
 		case WM_INITDIALOG:
 		{
 			int exti;
-
 			os_SetDlgItemText_localization_id(hwnd,IDC_APPDATA,LOCALIZATION_ID_STORE_SETTINGS_APPDATA);
+			os_SetDlgItemText_localization_id(hwnd,IDC_LANGUAGE_STATIC,LOCALIZATION_ID_LANGUAGE_STATIC);
+
+			{
+				HWND hLanguage = GetDlgItem(hwnd,IDC_LANGUAGE_COMBOBOX);
+				int index;
+
+				index = os_ComboBox_AddString_localization_id(hwnd,IDC_LANGUAGE_COMBOBOX,LOCALIZATION_ID_LANGUAGE_AUTO);
+				ComboBox_SetItemData(hLanguage,index,255);
+				if (config_language == 255) ComboBox_SetCurSel(hLanguage,index);
+
+				for(int i=0;i<LOCALIZATION_LANGUAGE_COUNT;i++)
+				{
+					index = os_ComboBox_AddString(hwnd,IDC_LANGUAGE_COMBOBOX,localization_get_language_name(i));
+					ComboBox_SetItemData(hLanguage,index,i);
+					if (config_language == i) ComboBox_SetCurSel(hLanguage,index);
+				}
+				
+				if (ComboBox_GetCurSel(hLanguage) == -1) ComboBox_SetCurSel(hLanguage,0);
+			};
 			os_SetDlgItemText_localization_id(hwnd,IDC_MULTIPLE_INSTANCES,LOCALIZATION_ID_ALLOW_MULTIPLE_INSTANCES);
 			os_SetDlgItemText_localization_id(hwnd,IDC_STARTMENU,LOCALIZATION_ID_STARTMENU_SHORTCUTS);
 			os_SetDlgItemText_localization_id(hwnd,IDC_ASSOCIATIONS_GROUPBOX,LOCALIZATION_ID_ASSOCIATIONS);
@@ -8413,6 +8423,8 @@ static INT_PTR CALLBACK _viv_options_view_proc(HWND hwnd,UINT msg,WPARAM wParam,
 				os_set_dialog_item_x_wide(hwnd,IDC_WINDOWEDBACKGROUNDCOLOR_BUTTON,static_wide+6,75);
 				os_set_dialog_item_x_wide(hwnd,IDC_FULLSCREENBACKGROUNDCOLOR_STATIC,0,static_wide+6);
 				os_set_dialog_item_x_wide(hwnd,IDC_FULLSCREENBACKGROUNDCOLOR_BUTTON,static_wide+6,75);
+				
+				os_SetDlgItemText_localization_id(hwnd,IDC_RESET_WINDOW,LOCALIZATION_ID_OPTIONS_VIEW_RESET_WINDOW_BUTTON);
 			}
 					
 			return FALSE;
@@ -8438,7 +8450,7 @@ static INT_PTR CALLBACK _viv_options_view_proc(HWND hwnd,UINT msg,WPARAM wParam,
 					{
 						COLORREF color;
 						
-						color = GetWindowLongPtr(GetDlgItem(hwnd,LOWORD(wParam)),GWLP_USERDATA);
+						color = (COLORREF)GetWindowLongPtr(GetDlgItem(hwnd,LOWORD(wParam)),GWLP_USERDATA);
 						
 						if (os_choose_color(hwnd,&color))
 						{
@@ -8447,6 +8459,37 @@ static INT_PTR CALLBACK _viv_options_view_proc(HWND hwnd,UINT msg,WPARAM wParam,
 						}
 					}
 					
+					break;
+
+				case IDC_RESET_WINDOW:
+					{
+						RECT monitor_rect;
+						int default_wide = 640;
+						int default_high = 480;
+						
+						os_MonitorRectFromCursor(1,&monitor_rect);
+						
+						if (config_auto_fit_wide_div)
+						{
+							default_wide = ((monitor_rect.right - monitor_rect.left) * config_auto_fit_wide_mul) / config_auto_fit_wide_div;
+						}
+						if (config_auto_fit_high_div)
+						{
+							default_high = ((monitor_rect.bottom - monitor_rect.top) * config_auto_fit_high_mul) / config_auto_fit_high_div;
+						}
+						
+						config_x = ((monitor_rect.right - monitor_rect.left) / 2) - (default_wide / 2);
+						config_y = ((monitor_rect.bottom - monitor_rect.top) / 2) - (default_high / 2);
+						config_wide = default_wide;
+						config_high = default_high;
+						config_maximized = 0;
+						
+						if (_viv_hwnd)
+						{
+							ShowWindow(_viv_hwnd, SW_RESTORE);
+							SetWindowPos(_viv_hwnd, 0, config_x, config_y, config_wide, config_high, SWP_NOZORDER|SWP_NOACTIVATE);
+						}
+					}
 					break;
 			}
 			
@@ -8649,6 +8692,17 @@ static INT_PTR CALLBACK _viv_options_proc(HWND hwnd,UINT msg,WPARAM wParam,LPARA
 						general_page = GetDlgItem(hwnd,VIV_ID_OPTIONS_GENERAL);
 						view_page = GetDlgItem(hwnd,VIV_ID_OPTIONS_VIEW);
 						controls_page = GetDlgItem(hwnd,VIV_ID_OPTIONS_CONTROLS);
+
+						{
+							BYTE new_language = (BYTE)ComboBox_GetItemData(GetDlgItem(general_page,IDC_LANGUAGE_COMBOBOX),ComboBox_GetCurSel(GetDlgItem(general_page,IDC_LANGUAGE_COMBOBOX)));
+							if (new_language != config_language)
+							{
+								config_language = new_language;
+								localization_init();
+								// Note: full UI refresh might be needed for dynamic change, but for now we just save it.
+							}
+						}
+
 						config_multiple_instances = 0;
 						
 						if (IsDlgButtonChecked(general_page,IDC_APPDATA) == BST_CHECKED) 
@@ -10260,7 +10314,7 @@ static int _viv_webp_frame_proc(_viv_webp_t *viv_webp,BYTE *pixels,int delay)
 		bmi.bmiHeader.biBitCount = 24;
 		bmi.bmiHeader.biCompression = BI_RGB;
 		
-		hbitmap = CreateCompatibleBitmap(viv_webp->screen_hdc,viv_webp->wide,viv_webp->high);
+		hbitmap = _viv_create_bitmap(viv_webp->screen_hdc,viv_webp->wide,viv_webp->high);
 
 		// Set RGB data to the bitmap
 		if (hbitmap) 
@@ -10612,7 +10666,7 @@ static DWORD WINAPI _viv_load_image_thread_proc(void *param)
 													break;
 												}
 												
-												hbitmap = CreateCompatibleBitmap(screen_hdc,load_wide,load_high);
+												hbitmap = _viv_create_bitmap(screen_hdc,load_wide,load_high);
 												if (hbitmap)
 												{
 													UINT image_flags;
@@ -11974,7 +12028,7 @@ static void _viv_update_color_button_bitmap(HWND hwnd)
 	screen_hdc = GetDC(0);
 	mem_hdc = CreateCompatibleDC(screen_hdc);
 	
-	hbitmap = CreateCompatibleBitmap(screen_hdc,wide,high);
+	hbitmap = _viv_create_bitmap(screen_hdc,wide,high);
 
 	last_hbitmap = SelectObject(mem_hdc,hbitmap);
 	
@@ -13668,6 +13722,22 @@ static void _viv_update_1to1_scroll(int x,int y)
 // #define PHOTO_ORIENTATION_ROTATE270         6u
 // #define PHOTO_ORIENTATION_TRANSVERSE        7u
 // #define PHOTO_ORIENTATION_ROTATE90          8u
+static HBITMAP _viv_create_bitmap(HDC hdc, int width, int height)
+{
+	BITMAPINFO bmi;
+	void* bits;
+	
+	ZeroMemory(&bmi, sizeof(BITMAPINFO));
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = -height;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+	
+	return CreateDIBSection(hdc, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+}
+
 static HBITMAP _viv_orientate_hbitmap(HBITMAP hbitmap,int orientation)
 {
 	BITMAP bitmap;
@@ -13706,7 +13776,7 @@ static HBITMAP _viv_orientate_hbitmap(HBITMAP hbitmap,int orientation)
 						break;
 				}
 				
-				ret_hbitmap = CreateCompatibleBitmap(screen_hdc,ret_wide,ret_high);
+				ret_hbitmap = _viv_create_bitmap(screen_hdc,ret_wide,ret_high);
 				if (ret_hbitmap)
 				{
 					int ret;
@@ -14223,7 +14293,7 @@ static HBITMAP _viv_get_mipmap(HBITMAP hbitmap,int image_wide,int image_high,int
 					if (mem2_hdc)
 					{
 						(*pmip)->mipmap = NULL;
-						(*pmip)->hbitmap = CreateCompatibleBitmap(screen_hdc,mip_wide,mip_high);
+						(*pmip)->hbitmap = _viv_create_bitmap(screen_hdc,mip_wide,mip_high);
 						
 						last_hbitmap = SelectObject(mem_hdc,(*pmip)->hbitmap);
 						last2_hbitmap = SelectObject(mem2_hdc,best_hbitmap);
@@ -14883,7 +14953,7 @@ static void _viv_stretch_blt(HDC dst_hdc,int dst_x,int dst_y,int dst_wide,int ds
 		{
 			HBITMAP dst_hbitmap;
 
-			dst_hbitmap = CreateCompatibleBitmap(dst_hdc,clip_wide,clip_high);
+			dst_hbitmap = _viv_create_bitmap(dst_hdc,clip_wide,clip_high);
 			if (dst_hbitmap)
 			{
 				HGDIOBJ last_dst_hbitmap;
@@ -15321,3 +15391,4 @@ static int _viv_safe_copy_data(const void *base,SIZE_T src_size,const void *src,
 	
 	return 1;
 }
+

@@ -26,6 +26,8 @@ static const utf8_t *_localization_string_array_en_us[LOCALIZATION_ID_COUNT] =
 {
 	// Application name
 	"English (US)", // LOCALIZATION_ID_LANGUAGE
+	"&Language:", // LOCALIZATION_ID_LANGUAGE_STATIC
+	"System Default", // LOCALIZATION_ID_LANGUAGE_AUTO
 	
 	// Application name
 	"void Image Viewer", // LOCALIZATION_ID_APP_NAME
@@ -232,6 +234,7 @@ static const utf8_t *_localization_string_array_en_us[LOCALIZATION_ID_COUNT] =
 	"Cache &last image", // LOCALIZATION_ID_CACHE_LAST_IMAGE_STATIC,
 	"&Windowed background color:", // LOCALIZATION_ID_WINDOWED_BACKGROUND_COLOR_STATIC,
 	"&Fullscreen background color:", // LOCALIZATION_ID_FULLSCREEN_BACKGROUND_COLOR_STATIC,
+	"Reset Window Size & Position", // LOCALIZATION_ID_OPTIONS_VIEW_RESET_WINDOW_BUTTON,
 	"&Left click action:", // LOCALIZATION_ID_LEFT_CLICK_ACTION_STATIC,
 	"&Right click action:", // LOCALIZATION_ID_RIGHT_CLICK_ACTION_STATIC,
 	"&Mouse wheel action:", // LOCALIZATION_ID_MOUSE_WHEEL_ACTION_STATIC,
