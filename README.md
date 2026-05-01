@@ -26,21 +26,21 @@ void Image Viewer main window:
 
 void Image Viewer General Options:
 
-<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/cd8835f7-a95e-4018-93df-14f7251b3757" />
+<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/accca998-0a15-40f4-935b-d41d677f208b" />
 <br/><br/><br/>
 
 
 
 void Image Viewer View Options:
 
-<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/3f9cb9ed-1a3b-4e1d-8ec2-12cc6908367f" />
+<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/316a167b-af09-4cbe-bec0-60ce396f047b" />
 <br/><br/><br/>
 
 
 
 void Image Viewer Controls Options:
 
-<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/1b7d9421-53e8-4d07-b424-3d16d0949403" />
+<img width="542" height="472" alt="image" src="https://github.com/user-attachments/assets/0a281f65-c849-4b0d-bcf9-0149badea0fc" />
 <br/><br/><br/>
 
 
